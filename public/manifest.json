@@ -1,0 +1,16 @@
+{
+  "short_name": "Carga MxF",
+  "name": "Carga Máquina x Carga Fábrica",
+  "icons": [
+    { "src": "favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" },
+    { "src": "logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "logo192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "logo512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#f97316",
+  "background_color": "#0d0f12",
+  "orientation": "portrait-primary"
+}

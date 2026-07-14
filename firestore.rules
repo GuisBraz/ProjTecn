@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Perfis de usuário — cada um só lê/edita o próprio perfil.
+    // O campo "role" é definido no cadastro (client-side) e não pode ser
+    // alterado depois por update, para reduzir o risco de auto-promoção.
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+                       request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    // PGMs (planos de corte) — Carga Máquina
+    match /pgms/{document=**} {
+      allow read: if isSignedIn() &&
+        getRole() in ['operacional_maquina', 'operacional_pcp', 'gestao_fabrica', 'executor_maquina'];
+
+      // Cadastro/edição completa: só Programador (PCP) e Gestão
+      allow create, delete: if isSignedIn() &&
+        getRole() in ['operacional_maquina', 'gestao_fabrica'];
+
+      // Update: Programador/Gestão editam tudo. Executor só pode alterar
+      // status (iniciar/finalizar corte), as datas de corte e o campo "cr".
+      allow update: if isSignedIn() && (
+        getRole() in ['operacional_maquina', 'gestao_fabrica'] ||
+        (
+          getRole() == 'executor_maquina' &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'data_inicio_corte', 'data_corte', 'cr'])
+        )
+      );
+    }
+
+    // Histórico de alterações (auditoria) — todos os papéis criam registros,
+    // ninguém edita nem apaga (imutável).
+    match /pgm_logs/{document=**} {
+      allow read, create: if isSignedIn() &&
+        getRole() in ['operacional_maquina', 'operacional_pcp', 'gestao_fabrica', 'executor_maquina'];
+      allow update, delete: if false;
+    }
+
+    // Configuração geral (expediente) — todos leem, só quem programa edita.
+    match /config/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && getRole() in ['operacional_maquina', 'gestao_fabrica'];
+    }
+
+    // Paradas programadas (feriados, manutenção) — todos leem, só quem programa edita.
+    match /paradas/{document=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && getRole() in ['operacional_maquina', 'gestao_fabrica'];
+    }
+  }
+}
